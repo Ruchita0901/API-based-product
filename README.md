@@ -1,103 +1,91 @@
-# API-based-product
+# API Design Assignment 1
 
-## Project Overview
+This repository contains solutions to the three parts of Assignment 1.
 
-API-based-product demonstrates a polished, evaluator-ready backend submission with two services:
-
-- `record_label_api`: a secure Record Label API with OpenAPI 3.1.1 and Swagger UI.
-- `book_service`: a book information service exposed with REST, RPC, and GraphQL.
-
-This repository includes Docker Compose support, Kong gateway documentation, and automated tests.
-
-## Features
-
-- REST CRUD endpoints for books
-- RPC-style book operations
-- GraphQL query and mutation support
-- Secured artist management API with Basic Auth
-- OpenAPI YAML specification served at `/openapi.yaml`
-- Swagger UI available at `/docs`
-- Docker Compose orchestration with Kong gateway
-- Tested with PyTest
-
-## Tech Stack
-
-- Python 3.12
-- FastAPI
-- Uvicorn
-- Graphene / GraphQL
-- Kong API Gateway
-- Docker Compose
-- PyTest
-
-## Folder Structure
-
-```text
-API-based-product/
-├── book_service/
-│   ├── app.py
-│   ├── data.py
-│   ├── graphql_api.py
-│   ├── rest_api.py
-│   └── rpc_api.py
-├── record_label_api/
+```
+.
+├── q1-openapi/              # Part 1 — OpenAPI 3.1.1 spec for a record label
+│   └── record-label.yaml
+├── q2-kong/                 # Part 2 — Kong rate limiting & request size limiting
+│   ├── docker-compose.yml
+│   └── README.md
+├── q3-book-service/         # Part 3 — Book Info Service (REST + RPC + GraphQL)
 │   ├── main.py
-│   └── openapi.yaml
-├── tests/
-│   └── test_api.py
-├── docker-compose.yml
-├── main.py
-├── README.md
-├── assignment_report.md
-└── requirements.txt
+│   ├── requirements.txt
+│   └── README.md
+└── README.md
 ```
 
-## Prerequisites
+## Part 1 — OpenAPI 3.1.1 (Record Label)
 
-- Python 3.12+
-- pip
-- Docker
-- docker-compose
+File: [q1-openapi/record-label.yaml](q1-openapi/record-label.yaml)
 
-## Install Dependencies
+Defines:
+- Basic authentication applied globally.
+- `GET /artists` with `limit` and `offset` query params.
+- `POST /artists` to create an artist.
+- `GET /artists/{artistname}` to fetch a specific artist.
+- Reusable `components.schemas` (`Artist`, `NewArtist`, `Error`).
+- Status codes: `200`, `201`, `400`, `401`, `404`.
 
+**Validate locally:**
 ```bash
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
+npx @redocly/cli lint q1-openapi/record-label.yaml
+# or paste into https://editor-next.swagger.io/
 ```
 
-## Running Locally
+## Part 2 — Kong API Gateway (Rate + Request-Size Limiting)
 
-### Start the Record Label API
+Folder: [q2-kong/](q2-kong/)
 
+DB-less Kong (declarative config) proxying to `httpbin.org`. Plugins:
+- `rate-limiting` — 5 requests/minute.
+- `request-size-limiting` — 1 KB max payload.
+
+**Run:**
 ```bash
-python main.py --service record_label_api --port 8002
+cd q2-kong
+docker compose up -d
+# Test rate limiting (6th call -> HTTP 429)
+for i in 1 2 3 4 5 6; do curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8000/get; done
+# Test size limit (HTTP 413)
+curl -X POST http://localhost:8000/post -H "Content-Type: application/json" --data "$(head -c 2000 /dev/urandom | base64)"
 ```
 
-- Swagger UI: `http://localhost:8002/docs`
-- OpenAPI YAML: `http://localhost:8002/openapi.yaml`
-- Health check: `http://localhost:8002/`
+## Part 3 — Book Info Service (REST / RPC / GraphQL)
 
-### Start the Book Service
+Folder: [q3-book-service/](q3-book-service/)
 
+A single Python Flask/FastAPI server exposing the same in-memory book data through three paradigms.
+
+**Run:**
 ```bash
-python main.py --service book_service --port 8003
+cd q3-book-service
+pip install -r requirements.txt
+python main.py
+# Server: http://localhost:4000
 ```
 
-- REST docs: `http://localhost:8003/docs`
-- GraphQL playground: `http://localhost:8003/graphql`
+**Endpoints:**
 
-## Run with Docker Compose
+| Paradigm  | Example                                                                |
+|-----------|------------------------------------------------------------------------|
+| REST      | `GET http://localhost:4000/books` · `GET /books/1`                     |
+| RPC       | `POST http://localhost:4000/rpc/getBook` body `{"id":1}`               |
+| GraphQL   | `POST http://localhost:4000/graphql` body `{ "query": "{ book(id:1){title author} }" }` |
 
-Start both services and Kong:
+### Comparison of Paradigms
 
-```bash
-docker-compose up -d
-```
-
-Endpoints:
-
-- Record Label API: `http://localhost:8002`
+| Aspect            | REST                                | RPC                                  | GraphQL                                  |
+|-------------------|-------------------------------------|--------------------------------------|------------------------------------------|
+| Style             | Resource-oriented (nouns + verbs)   | Action-oriented (verbs/procedures)   | Query language over a single endpoint    |
+| URL shape         | Many URLs (`/books`, `/books/1`)    | One URL per procedure                | Single `/graphql` endpoint               |
+| HTTP semantics    | Uses GET/POST/PUT/DELETE + statuses | Usually all POST                     | Usually all POST                         |
+| Over/under-fetch  | Fixed payload — common              | Fixed payload — common               | Client picks fields — neither            |
+| Discoverability   | OpenAPI / HATEOAS                   | Custom docs or proto/IDL             | Self-describing schema + introspection   |
+| Versioning        | URL or header (`/v2/books`)         | New procedure name                   | Schema evolves with deprecation          |
+| Tooling           | Massive ecosystem                   | gRPC tooling strong; plain RPC weak  | Strong typed clients (Apollo, urql)      |
+| Best for          | Public CRUD APIs                    | Internal service-to-service calls    | Aggregating data for varied UI clients   |
 - Book Service: `http://localhost:8003`
 - Kong Proxy: `http://localhost:8000`
 - Kong Admin: `http://localhost:8001`
