@@ -15,7 +15,7 @@ Kong is deployed in a Docker container in DB-less mode. The gateway is configure
 Implemented in `record-label-api/main.py` using FastAPI. It supports an in-memory dataset, pagination, HTTP Basic Authentication, and proper status codes.
 
 ### Book Info Service
-Three separate Python modules are provided under `book-service`:
+Three separate Python modules are provided under `book_service`:
 - `rest_api.py`: REST endpoints for `GET /books` and `GET /books/{id}`
 - `rpc_api.py`: RPC endpoints for `POST /getBook` and `POST /createBook`
 - `graphql_api.py`: GraphQL endpoint for `POST /graphql`

@@ -82,9 +82,12 @@ def create_artist(
     artist: Artist,
     current_user: str = Depends(get_current_user),
 ):
-    existing = next((item for item in artists if item["username"] == artist.username), None)
+    existing = next(
+        (item for item in artists if item["username"] == artist.username or item["name"].lower() == artist.name.lower()),
+        None,
+    )
     if existing:
-        raise HTTPException(status_code=400, detail="Artist username already exists")
+        raise HTTPException(status_code=400, detail="Artist with this name or username already exists")
     artists.append(artist.dict())
     return artist
 
@@ -95,7 +98,7 @@ def get_artist(
     current_user: str = Depends(get_current_user),
 ):
     artist = next(
-        (item for item in artists if item["username"].lower() == artistname.lower()),
+        (item for item in artists if item["name"].lower() == artistname.lower()),
         None,
     )
     if not artist:
