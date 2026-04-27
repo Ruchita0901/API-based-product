@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from typing import Optional
 from .data import books
 
 router = APIRouter(tags=["RPC"])
@@ -16,6 +17,11 @@ class CreateBookRequest(BaseModel):
     title: str
     author: str
 
+class UpdateBookRequest(BaseModel):
+    id: int
+    title: Optional[str] = None
+    author: Optional[str] = None
+
 @router.post("/getBook", response_model=Book)
 def get_book(request: GetBookRequest):
     book = next((item for item in books if item["id"] == request.id), None)
@@ -28,4 +34,15 @@ def create_book(request: CreateBookRequest):
     next_id = max((item["id"] for item in books), default=0) + 1
     book = {"id": next_id, "title": request.title, "author": request.author}
     books.append(book)
+    return book
+
+@router.post("/updateBook", response_model=Book)
+def update_book(request: UpdateBookRequest):
+    book = next((item for item in books if item["id"] == request.id), None)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    if request.title is not None:
+        book["title"] = request.title
+    if request.author is not None:
+        book["author"] = request.author
     return book

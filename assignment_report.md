@@ -1,48 +1,131 @@
 # Assignment Report
 
 ## Introduction
-This submission contains a record label API, a Kong API gateway configuration, and a book information service implemented in REST, RPC, and GraphQL paradigms. The project is designed to be simple, academic, and fully runnable on a local machine.
 
-## OpenAPI Explanation
-The OpenAPI document describes the `Record Label API` with three endpoints: `GET /artists`, `POST /artists`, and `GET /artists/{artistname}`. It includes request parameters, response schemas, and HTTP Basic Authentication as the security requirement.
+This submission delivers a complete local API project with two independent services:
 
-## Kong Setup Explanation
-Kong is deployed in a Docker container in DB-less mode. The gateway is configured to proxy requests to the local FastAPI backend through the host gateway. Rate limiting and request size limiting are enabled using Kong plugins.
+- `record_label_api`: a record label service with secure FastAPI endpoints and OpenAPI 3.1.1 documentation.
+- `book_service`: a shared book dataset exposed by REST, RPC, and GraphQL.
 
-## API Implementations
+The project is designed for evaluation clarity, developer usability, and a consistent experience across API styles.
 
-### Record Label API
-Implemented in `record-label-api/main.py` using FastAPI. It supports an in-memory dataset, pagination, HTTP Basic Authentication, and proper status codes.
+## Architecture and Design
 
-### Book Info Service
-Three separate Python modules are provided under `book_service`:
-- `rest_api.py`: REST endpoints for `GET /books` and `GET /books/{id}`
-- `rpc_api.py`: RPC endpoints for `POST /getBook` and `POST /createBook`
-- `graphql_api.py`: GraphQL endpoint for `POST /graphql`
-All three use the same dataset and return identical book information.
+### Service separation
 
-## Comparison Table: REST vs RPC vs GraphQL
+The project maintains clear separation of concerns:
 
-| Feature | REST | RPC | GraphQL |
-|---|---|---|---|
-| Style | Resource-oriented | Method-oriented | Query-oriented |
-| Flexibility | Moderate | Limited | High |
-| Efficiency | Good for simple requests | Good for fixed operations | Excellent for selective fields |
-| Complexity | Low | Low | Moderate |
+- `record_label_api/` contains the record label FastAPI service and its OpenAPI specification.
+- `book_service/` contains the shared book dataset plus REST, RPC, and GraphQL adapters.
+- `main.py` is the root entry point for local service startup.
 
-## Screenshot Section
+### Single entry point
 
-### Swagger UI
-Open the record label API docs in a browser at `http://localhost:8000/docs`.
+A top-level `main.py` lets evaluators run either service with a single command,
+while Docker Compose can start both services simultaneously.
 
-### GET/POST Requests
-Use the provided curl examples to exercise `GET /artists`, `POST /artists`, and `GET /artists/{artistname}`.
+## Record Label API
 
-### Kong Commands and Errors
-Run Kong setup commands from the assignment instructions. Expected error responses include `429 Too Many Requests` after excessive calls and `413 Payload Too Large` for large POST bodies.
+### API design
 
-### REST, RPC, GraphQL Outputs
-The Book Info Service returns identical data from each paradigm for the dataset entry `id=1`.
+The record label API exposes three endpoints:
+
+- `GET /artists` with pagination support via `offset` and `limit`
+- `POST /artists` to create a new artist
+- `GET /artists/{artistname}` to retrieve artists by their name, not by username
+
+The API is secured with HTTP Basic Authentication and returns appropriate status codes:
+
+- `200 OK` for successful reads
+- `201 Created` for successful creation
+- `400 Bad Request` for invalid input
+- `401 Unauthorized` for failed authentication
+- `404 Not Found` for missing artists
+
+### OpenAPI integration
+
+The `record_label_api/openapi.yaml` file is used directly by the API. FastAPI serves
+OpenAPI through its docs and also exposes the raw YAML file at `/openapi.yaml`.
+This ensures the spec is both valid and accessible.
+
+## Book Service API Paradigms
+
+### REST API
+
+Implemented with full CRUD semantics:
+
+- `GET /books`
+- `GET /books/{id}`
+- `POST /books`
+- `PUT /books/{id}`
+- `DELETE /books/{id}`
+
+This service is ideal for standard HTTP-based resource operations.
+
+### RPC API
+
+The RPC layer supports method-style operations:
+
+- `POST /getBook`
+- `POST /createBook`
+- `POST /updateBook`
+
+RPC is useful for clients that prefer action-oriented interaction patterns.
+
+### GraphQL API
+
+GraphQL supports both queries and mutations with a single endpoint:
+
+- Query book data with field selection
+- Create new books with `createBook`
+
+GraphQL is valuable when clients need flexible payload shapes and selective fields.
+
+## Trade-offs: REST vs RPC vs GraphQL
+
+- REST
+  - Pros: standard HTTP semantics, easy caching, clear resources
+  - Cons: fixed endpoints for each action
+- RPC
+  - Pros: direct action-based calls, simple payloads
+  - Cons: less discoverable and less aligned with HTTP resource modeling
+- GraphQL
+  - Pros: flexible client-driven queries, fewer round trips
+  - Cons: greater server complexity and more difficult caching
+
+## Kong API Gateway
+
+Kong runs in DB-less mode and proxies requests to the Record Label API.
+The gateway demonstrates:
+
+- service registration
+- route creation
+- rate limiting plugin
+- request size limiting plugin
+
+These features are documented with exact `curl` commands in the repository README.
+
+## Testing
+
+The project includes PyTest coverage for both services, verifying:
+
+- record label authentication and artist endpoints
+- book service REST CRUD behavior
+- book service RPC operations
+- book service GraphQL query and mutation
+
+## Limitations
+
+- Data is stored in-memory, so state is not persisted across restarts.
+- Kong plugin configuration in DB-less mode must be reapplied if containers are recreated.
+- This implementation is intended for evaluation and local demonstration.
 
 ## Conclusion
-This solution meets the assignment requirements with simple, maintainable code and clear documentation. The backend runs locally, Kong is configured with rate limiting and request size limiting, and the book service demonstrates three API paradigms with a shared dataset.
+
+This repository is now structured for evaluation and developer use, with:
+
+- a clear entry point,
+- robust API implementations,
+- full documentation,
+- Docker Compose support,
+- and unit tests.

@@ -1,22 +1,28 @@
+from pathlib import Path
+import secrets
 from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi.responses import FileResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel, Field
 from typing import List
-import secrets
+
+OPENAPI_YAML_PATH = Path(__file__).parent / "openapi.yaml"
 
 app = FastAPI(
     title="Record Label API",
-    description="A simple record label API with Basic Authentication and pagination.",
+    description="A secure record label API with pagination and Basic Authentication.",
     version="1.0.0",
-    openapi_url="/openapi.yaml",
+    openapi_url="/openapi.json",
+    docs_url="/docs",
+    redoc_url="/redoc",
 )
 security = HTTPBasic()
 
 class Artist(BaseModel):
-    name: str = Field(..., example="The Rolling Stones")
-    genre: str = Field(..., example="Rock")
-    albums: int = Field(..., ge=0, example=30)
-    username: str = Field(..., example="rollingstones")
+    name: str = Field(..., json_schema_extra={"example": "The Rolling Stones"})
+    genre: str = Field(..., json_schema_extra={"example": "Rock"})
+    albums: int = Field(..., ge=0, json_schema_extra={"example": 30})
+    username: str = Field(..., json_schema_extra={"example": "rollingstones"})
 
 class ArtistList(BaseModel):
     total: int
@@ -58,6 +64,11 @@ def get_current_user(credentials: HTTPBasicCredentials = Depends(security)) -> s
     return credentials.username
 
 
+@app.get("/openapi.yaml", include_in_schema=False)
+def openapi_yaml():
+    return FileResponse(OPENAPI_YAML_PATH, media_type="application/yaml")
+
+
 @app.get("/artists", response_model=ArtistList)
 def get_artists(
     offset: int = 0,
@@ -83,7 +94,12 @@ def create_artist(
     current_user: str = Depends(get_current_user),
 ):
     existing = next(
-        (item for item in artists if item["username"] == artist.username or item["name"].lower() == artist.name.lower()),
+        (
+            item
+            for item in artists
+            if item["username"] == artist.username
+            or item["name"].lower() == artist.name.lower()
+        ),
         None,
     )
     if existing:

@@ -12,11 +12,26 @@ class Query(graphene.ObjectType):
     books = graphene.List(BookType)
 
     def resolve_book(self, info, id):
-        matched = next((item for item in books if item["id"] == id), None)
-        return matched
+        return next((item for item in books if item["id"] == id), None)
 
     def resolve_books(self, info):
         return books
 
-schema = graphene.Schema(query=Query)
+class CreateBook(graphene.Mutation):
+    class Arguments:
+        title = graphene.String(required=True)
+        author = graphene.String(required=True)
+
+    book = graphene.Field(BookType)
+
+    def mutate(self, info, title, author):
+        next_id = max((item["id"] for item in books), default=0) + 1
+        book = {"id": next_id, "title": title, "author": author}
+        books.append(book)
+        return CreateBook(book=book)
+
+class Mutation(graphene.ObjectType):
+    create_book = CreateBook.Field()
+
+schema = graphene.Schema(query=Query, mutation=Mutation)
 graphql_app = GraphQLApp(schema=schema, on_get=make_playground_handler())
