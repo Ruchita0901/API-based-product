@@ -2,12 +2,23 @@
 
 ## Project Overview
 
-This repository contains two independently runnable API services:
+API-based-product demonstrates a polished, evaluator-ready backend submission with two services:
 
-- `record_label_api`: a FastAPI-based Record Label API with Basic Authentication and OpenAPI 3.1.1 documentation.
-- `book_service`: a shared book dataset exposed through REST, RPC, and GraphQL endpoints.
+- `record_label_api`: a secure Record Label API with OpenAPI 3.1.1 and Swagger UI.
+- `book_service`: a book information service exposed with REST, RPC, and GraphQL.
 
-The project also includes Docker Compose support and Kong gateway setup instructions.
+This repository includes Docker Compose support, Kong gateway documentation, and automated tests.
+
+## Features
+
+- REST CRUD endpoints for books
+- RPC-style book operations
+- GraphQL query and mutation support
+- Secured artist management API with Basic Auth
+- OpenAPI YAML specification served at `/openapi.yaml`
+- Swagger UI available at `/docs`
+- Docker Compose orchestration with Kong gateway
+- Tested with PyTest
 
 ## Tech Stack
 
@@ -57,7 +68,7 @@ python -m pip install -r requirements.txt
 
 ## Running Locally
 
-### Run the Record Label API
+### Start the Record Label API
 
 ```bash
 python main.py --service record_label_api --port 8002
@@ -65,8 +76,9 @@ python main.py --service record_label_api --port 8002
 
 - Swagger UI: `http://localhost:8002/docs`
 - OpenAPI YAML: `http://localhost:8002/openapi.yaml`
+- Health check: `http://localhost:8002/`
 
-### Run the Book Service
+### Start the Book Service
 
 ```bash
 python main.py --service book_service --port 8003
@@ -75,15 +87,15 @@ python main.py --service book_service --port 8003
 - REST docs: `http://localhost:8003/docs`
 - GraphQL playground: `http://localhost:8003/graphql`
 
-## Docker Compose
+## Run with Docker Compose
 
-Bring up all services with:
+Start both services and Kong:
 
 ```bash
 docker-compose up -d
 ```
 
-Service endpoints:
+Endpoints:
 
 - Record Label API: `http://localhost:8002`
 - Book Service: `http://localhost:8003`
@@ -94,14 +106,14 @@ Service endpoints:
 
 ### Authentication
 
-All endpoints require HTTP Basic Authentication:
+All Record Label endpoints require HTTP Basic Authentication:
 
 - Username: `admin`
 - Password: `admin123`
 
 ### Endpoints
 
-- `GET /artists` — list artists with `offset` and `limit`
+- `GET /artists` — list artists with pagination using `offset` and `limit`
 - `POST /artists` — create a new artist
 - `GET /artists/{artistname}` — retrieve an artist by name
 
@@ -140,7 +152,7 @@ curl -u admin:admin123 http://localhost:8002/artists/Adele
 
 ## Book Service
 
-This service exposes a shared in-memory book dataset through multiple API paradigms.
+The Book Service uses a shared in-memory dataset for the same data across REST, RPC, and GraphQL.
 
 ### REST Endpoints
 
@@ -156,32 +168,9 @@ This service exposes a shared in-memory book dataset through multiple API paradi
 - `POST /createBook`
 - `POST /updateBook`
 
-### GraphQL
+### GraphQL Endpoint
 
-Query example:
-
-```graphql
-query {
-  book(id: 1) {
-    title
-    author
-  }
-}
-```
-
-Mutation example:
-
-```graphql
-mutation {
-  createBook(title: "Foundation", author: "Isaac Asimov") {
-    book {
-      id
-      title
-      author
-    }
-  }
-}
-```
+- `POST /graphql`
 
 ### Example Requests
 
@@ -189,6 +178,14 @@ REST list books:
 
 ```bash
 curl http://localhost:8003/books
+```
+
+REST create book:
+
+```bash
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"title":"Dune","author":"Frank Herbert"}' \
+  http://localhost:8003/books
 ```
 
 RPC get book:
@@ -207,9 +204,17 @@ curl -X POST -H "Content-Type: application/json" \
   http://localhost:8003/graphql
 ```
 
+GraphQL mutation:
+
+```bash
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"query":"mutation { createBook(title: \"Foundation\", author: \"Isaac Asimov\") { book { id title author } } }"}' \
+  http://localhost:8003/graphql
+```
+
 ## Kong API Gateway Setup
 
-Register the record label backend:
+Register the Record Label service:
 
 ```bash
 curl -i -X POST http://localhost:8001/services/ \
@@ -217,7 +222,7 @@ curl -i -X POST http://localhost:8001/services/ \
   --data "url=http://record_label_api:8002"
 ```
 
-Create the proxy route:
+Create the Kong route:
 
 ```bash
 curl -i -X POST http://localhost:8001/services/record-label-service/routes \
@@ -242,30 +247,55 @@ curl -i -X POST http://localhost:8001/services/record-label-service/plugins \
   --data "config.allowed_payload_size=1048576"
 ```
 
-Test through Kong:
+Test via Kong:
 
 ```bash
 curl -u admin:admin123 http://localhost:8000/record-label/artists
 ```
 
-## API Style Comparison
+## Example Responses
 
-| Paradigm | Endpoints | Strength | Best for |
-| --- | --- | --- | --- |
-| REST | `/books`, `/books/{id}` | Resource-driven, explicit HTTP semantics | Standard CRUD and API compatibility |
-| RPC | `/getBook`, `/createBook`, `/updateBook` | Procedural, action-oriented | Simple command-style workflows |
-| GraphQL | `/graphql` | Flexible client-driven field selection | UI-driven data fetching and minimizing roundtrips |
+REST list books response:
+
+```json
+[
+  {"id": 1, "title": "1984", "author": "George Orwell"}
+]
+```
+
+RPC getBook response:
+
+```json
+{
+  "id": 1,
+  "title": "1984",
+  "author": "George Orwell"
+}
+```
+
+GraphQL response:
+
+```json
+{
+  "data": {
+    "book": {
+      "title": "1984",
+      "author": "George Orwell"
+    }
+  }
+}
+```
 
 ## Testing
 
 Run tests with:
 
 ```bash
-pytest
+pytest tests/test_api.py -q
 ```
 
 ## Known Limitations
 
-- In-memory storage means book and artist data do not persist across restarts.
-- Kong DB-less mode configuration must be reapplied after container recreation.
-- This sample is designed for local evaluation and demonstration rather than production persistence.
+- Data is stored in-memory and not persisted across restarts.
+- Kong DB-less mode requires plugins to be reapplied after container recreation.
+- This implementation is meant for local evaluation and demonstration.

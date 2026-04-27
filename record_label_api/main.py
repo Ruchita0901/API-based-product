@@ -15,6 +15,7 @@ app = FastAPI(
     openapi_url="/openapi.json",
     docs_url="/docs",
     redoc_url="/redoc",
+    swagger_ui_parameters={"url": "/openapi.yaml"},
 )
 security = HTTPBasic()
 
@@ -67,6 +68,15 @@ def get_current_user(credentials: HTTPBasicCredentials = Depends(security)) -> s
 @app.get("/openapi.yaml", include_in_schema=False)
 def openapi_yaml():
     return FileResponse(OPENAPI_YAML_PATH, media_type="application/yaml")
+
+
+@app.get("/", include_in_schema=False)
+def root():
+    return {
+        "service": "Record Label API",
+        "documentation": "/docs",
+        "openapi_yaml": "/openapi.yaml",
+    }
 
 
 @app.get("/artists", response_model=ArtistList)

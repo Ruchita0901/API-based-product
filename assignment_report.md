@@ -2,130 +2,101 @@
 
 ## Introduction
 
-This submission delivers a complete local API project with two independent services:
+This project provides a professional API submission with two separate services:
 
-- `record_label_api`: a record label service with secure FastAPI endpoints and OpenAPI 3.1.1 documentation.
-- `book_service`: a shared book dataset exposed by REST, RPC, and GraphQL.
+- `record_label_api` for artist management.
+- `book_service` for book information across REST, RPC, and GraphQL.
 
-The project is designed for evaluation clarity, developer usability, and a consistent experience across API styles.
+It emphasizes evaluator clarity, simple setup, and consistent API behavior.
 
-## Architecture and Design
+## Architecture Overview
 
-### Service separation
+The codebase is composed of two FastAPI services plus a shared root entry point:
 
-The project maintains clear separation of concerns:
+- `record_label_api/` contains the Record Label service and the OpenAPI 3.1.1 YAML document.
+- `book_service/` contains the shared dataset with REST, RPC, and GraphQL adapters.
+- `main.py` is a single startup entry point that launches either service.
 
-- `record_label_api/` contains the record label FastAPI service and its OpenAPI specification.
-- `book_service/` contains the shared book dataset plus REST, RPC, and GraphQL adapters.
-- `main.py` is the root entry point for local service startup.
+Docker Compose supports launching both services together with Kong as an API gateway.
 
-### Single entry point
+## Design Decisions
 
-A top-level `main.py` lets evaluators run either service with a single command,
-while Docker Compose can start both services simultaneously.
+### Why REST, RPC, and GraphQL?
+
+- REST is used for predictable, resource-oriented book management.
+- RPC is used for action-based book operations that are easy to reason about.
+- GraphQL is used for flexible client-driven queries and a single unified endpoint.
+
+These styles demonstrate the trade-offs between explicit resources, procedural commands, and flexible schema-driven queries.
+
+### Why in-memory storage?
+
+In-memory storage keeps setup simple and makes the service easy to evaluate. The trade-off is that state does not persist across restarts, which is acceptable for a demo project.
 
 ## Record Label API
 
-### API design
+### API contract
 
-The record label API exposes three endpoints:
+Endpoints:
 
-- `GET /artists` with pagination support via `offset` and `limit`
-- `POST /artists` to create a new artist
-- `GET /artists/{artistname}` to retrieve artists by their name, not by username
+- `GET /artists` — paginated list of artists using `offset` and `limit`
+- `POST /artists` — create a new artist
+- `GET /artists/{artistname}` — retrieve an artist by name
 
-The API is secured with HTTP Basic Authentication and returns appropriate status codes:
+Security:
 
-- `200 OK` for successful reads
+- HTTP Basic Authentication with `admin` / `admin123`
+
+Response handling:
+
+- `200 OK` for successful retrievals
 - `201 Created` for successful creation
-- `400 Bad Request` for invalid input
-- `401 Unauthorized` for failed authentication
+- `400 Bad Request` for invalid parameters
+- `401 Unauthorized` for incorrect credentials
 - `404 Not Found` for missing artists
 
-### OpenAPI integration
+### OpenAPI and Swagger
 
-The `record_label_api/openapi.yaml` file is used directly by the API. FastAPI serves
-OpenAPI through its docs and also exposes the raw YAML file at `/openapi.yaml`.
-This ensures the spec is both valid and accessible.
+The existing `record_label_api/openapi.yaml` is served at `/openapi.yaml` and is consumed by Swagger UI at `/docs`.
+This provides a direct, evaluator-friendly API documentation experience.
 
 ## Book Service API Paradigms
 
-### REST API
+### REST
 
-Implemented with full CRUD semantics:
+The REST API supports full CRUD operations on books and is ideal for standard resource-based workflows.
 
-- `GET /books`
-- `GET /books/{id}`
-- `POST /books`
-- `PUT /books/{id}`
-- `DELETE /books/{id}`
+### RPC
 
-This service is ideal for standard HTTP-based resource operations.
+The RPC endpoints expose operation-focused actions and are useful when the client expects method-like behavior.
 
-### RPC API
+### GraphQL
 
-The RPC layer supports method-style operations:
+GraphQL provides a flexible query interface, allowing clients to request exactly the fields they need and use a single endpoint.
 
-- `POST /getBook`
-- `POST /createBook`
-- `POST /updateBook`
+## Trade-offs and Observations
 
-RPC is useful for clients that prefer action-oriented interaction patterns.
+| Style | Strengths | Best use case |
+|---|---|---|
+| REST | Clear resource semantics and predictable URLs | Standard CRUD APIs |
+| RPC | Simple, action-oriented payloads | Command-style service interactions |
+| GraphQL | Flexible field selection and single endpoint | UI-driven data fetching and variable query shapes |
 
-### GraphQL API
+## Docker and Deployment
 
-GraphQL supports both queries and mutations with a single endpoint:
-
-- Query book data with field selection
-- Create new books with `createBook`
-
-GraphQL is valuable when clients need flexible payload shapes and selective fields.
-
-## Trade-offs: REST vs RPC vs GraphQL
-
-- REST
-  - Pros: standard HTTP semantics, easy caching, clear resources
-  - Cons: fixed endpoints for each action
-- RPC
-  - Pros: direct action-based calls, simple payloads
-  - Cons: less discoverable and less aligned with HTTP resource modeling
-- GraphQL
-  - Pros: flexible client-driven queries, fewer round trips
-  - Cons: greater server complexity and more difficult caching
-
-## Kong API Gateway
-
-Kong runs in DB-less mode and proxies requests to the Record Label API.
-The gateway demonstrates:
-
-- service registration
-- route creation
-- rate limiting plugin
-- request size limiting plugin
-
-These features are documented with exact `curl` commands in the repository README.
-
-## Testing
-
-The project includes PyTest coverage for both services, verifying:
-
-- record label authentication and artist endpoints
-- book service REST CRUD behavior
-- book service RPC operations
-- book service GraphQL query and mutation
+Docker Compose runs the Record Label API, Book Service, and Kong gateway together. The gateway is configured for proxying and plugin management with commands provided in the README.
 
 ## Limitations
 
-- Data is stored in-memory, so state is not persisted across restarts.
-- Kong plugin configuration in DB-less mode must be reapplied if containers are recreated.
-- This implementation is intended for evaluation and local demonstration.
+- Data is stored only in memory and resets on each service restart.
+- Kong DB-less mode requires plugin reconfiguration after containers are recreated.
+- This project is structured for demonstration and local evaluation, not long-term production persistence.
 
 ## Conclusion
 
-This repository is now structured for evaluation and developer use, with:
+The repository now offers a complete evaluator-ready submission with:
 
-- a clear entry point,
-- robust API implementations,
-- full documentation,
-- Docker Compose support,
-- and unit tests.
+- secure and documented APIs
+- a single entry point and Docker Compose support
+- multiple API paradigms with consistent shared data
+- clear documentation, example commands, and tests

@@ -1,16 +1,28 @@
 version: "3.9"
 services:
-  recordlabelapi:
+  record_label_api:
     image: python:3.12-slim
     restart: unless-stopped
     volumes:
-      - ./record-label-api:/app
-      - ./requirements.txt:/app/requirements.txt:ro
+      - ./:/app
     working_dir: /app
     command: >
-      sh -c "pip install --no-cache-dir -r requirements.txt && uvicorn main:app --host 0.0.0.0 --port 8000"
+      sh -c "pip install --no-cache-dir -r requirements.txt && python main.py --service record_label_api --port 8002"
     ports:
-      - "8002:8000"
+      - "8002:8002"
+    environment:
+      - PYTHONUNBUFFERED=1
+
+  book_service:
+    image: python:3.12-slim
+    restart: unless-stopped
+    volumes:
+      - ./:/app
+    working_dir: /app
+    command: >
+      sh -c "pip install --no-cache-dir -r requirements.txt && python main.py --service book_service --port 8003"
+    ports:
+      - "8003:8003"
     environment:
       - PYTHONUNBUFFERED=1
 
@@ -18,7 +30,7 @@ services:
     image: kong:3.4.0
     restart: unless-stopped
     depends_on:
-      - recordlabelapi
+      - record_label_api
     environment:
       KONG_DATABASE: "off"
       KONG_DECLARATIVE_CONFIG: ""
